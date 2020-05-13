@@ -1,0 +1,996 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "version": "0.2.2",
+    "title": "Escaleport API",
+    "description": "Allows to search through movements and submit FAL5 and FAL6 forms to Escaleport information system.\n\n---\n\n\n- *All users must register on PISTE API Manager at* [https://developer.aife.economie.gouv.fr](https://developer.aife.economie.gouv.fr)\n- *Usage of the production API also requires creating a corresponding contact on Escaleport with PISTE provided `client_id`*\n\nThe API Manager user guide can be found at [https://developer.aife.economie.gouv.fr/en/help-center/guide](https://developer.aife.economie.gouv.fr/en/help-center/guide).\n"
+  },
+  "externalDocs": {
+    "description": "Find out more about European Maritime Single Window",
+    "url": "https://www.ecologique-solidaire.gouv.fr/guichet-unique-maritime-et-portuaire-gump"
+  },
+  "servers": [
+    {
+      "url": "https://virtserver.swaggerhub.com/nviel/escaleport/0.2.0"
+    },
+    {
+      "url": "https://sandbox-api.aife.economie.gouv.fr/escaleport/0.2.0",
+      "description": "Sandbox server"
+    },
+    {
+      "url": "https://api.aife.economie.gouv.fr/escaleport/0.2.0",
+      "description": "Production server"
+    }
+  ],
+  "security": [
+    {
+      "piste_auth": [
+        "openid"
+      ]
+    },
+    {
+      "piste_sandbox_auth": [
+        "openid"
+      ]
+    },
+    {}
+  ],
+  "paths": {
+    "/healthcheck": {
+      "get": {
+        "summary": "Health check endpoint",
+        "parameters": [
+          {
+            "name": "Authorization",
+            "description": "valid PISTE provided authorization token",
+            "example": "Bearer mF_9.B5f-4.1JqM",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "All services are healthy",
+            "content": {
+              "application/xml;charset=utf-8": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "At least one service is unavailable (KO)",
+            "content": {
+              "application/xml;charset=utf-8": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/port/{locode}/movements": {
+      "get": {
+        "summary": "ship movement search",
+        "description": "Allows to search through movements. Can be used to find a specific movement and retrieve its `shipCallId` to be able to fill its FAL5 and FAL6 forms.\n\nResult is limited to 200 items and response will return partial result if more are found.\n\nAccess is open to every API user.\n\nCurl example:\n```bash\ncurl -k -H \"Authorization:Bearer <access_token>\" -X GET https://sandbox-api.aife.economie.gouv.fr/escaleport/0.2.0/port/FRCQF/movements?movement_type=arrival&movement_status=planned&min_date_time=2020-01-27T10%3A00Z&max_date_time=2020-01-27T12%3A00Z\n```\n",
+        "parameters": [
+          {
+            "name": "locode",
+            "in": "path",
+            "description": "locode of the port of call",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Locode"
+            }
+          },
+          {
+            "name": "imo",
+            "in": "query",
+            "description": "IMO number of the ship",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "movement_type",
+            "in": "query",
+            "description": "type of movement in arrival, shift or departure",
+            "schema": {
+              "$ref": "#/components/schemas/MovementType"
+            }
+          },
+          {
+            "name": "movement_status",
+            "in": "query",
+            "description": "status of the movement",
+            "schema": {
+              "$ref": "#/components/schemas/MovementStatus"
+            }
+          },
+          {
+            "name": "min_date_time",
+            "in": "query",
+            "description": "beginning of the search date range",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "max_date_time",
+            "in": "query",
+            "description": "end of the search date range",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "estimated_date_time",
+            "in": "query",
+            "description": "estimated date/time of movement",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "Authorization",
+            "description": "PISTE provided authorization token",
+            "example": "Bearer mF_9.B5f-4.1JqM",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation. Full result returned (may be empty result)",
+            "content": {
+              "application/xml;charset=utf-8": {
+                "schema": {
+                  "description": "list of movements' informations",
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MovementInfo"
+                  },
+                  "xml": {
+                    "wrapped": true,
+                    "name": "movementInfoList"
+                  }
+                }
+              }
+            }
+          },
+          "206": {
+            "description": "Partial result. Only first 200 movements are returned.",
+            "content": {
+              "application/xml;charset=utf-8": {
+                "schema": {
+                  "description": "list of movements' informations",
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MovementInfo"
+                  },
+                  "xml": {
+                    "wrapped": true,
+                    "name": "movementInfoList"
+                  }
+                }
+              }
+            },
+            "headers": {
+              "Content-Range": {
+                "description": "Result range information as follow : begin - end / count\n\nbegin, end and count will always be 0 - 200 / *\n",
+                "example": "0 - 200 / *",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Accept-Range": {
+                "example": "none",
+                "description": "Header value is none as range requests are not supported.",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request. Request/body value not valid or invalid use.",
+            "content": {
+              "application/xml;charset=utf-8": {
+                "schema": {
+                  "description": "Error or errors' description",
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Error"
+                  },
+                  "xml": {
+                    "name": "errors"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. Authentication required."
+          },
+          "404": {
+            "description": "Not Found. Port with given locode does not exist"
+          },
+          "406": {
+            "description": "Not acceptable. Can't generate response according to headers' request or can't parse/malformed parameters",
+            "content": {
+              "application/xml;charset=utf-8": {
+                "schema": {
+                  "description": "Error or errors' description",
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Error"
+                  },
+                  "xml": {
+                    "name": "errors"
+                  }
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsuported media type."
+          },
+          "500": {
+            "description": "Internal Server Error."
+          },
+          "503": {
+            "description": "Service Unavailable."
+          },
+          "default": {
+            "description": "Unexpected error.",
+            "content": {
+              "application/xml;charset=utf-8": {
+                "schema": {
+                  "description": "Error or errors' description",
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Error"
+                  },
+                  "xml": {
+                    "name": "errors"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/port/{locode}/ship_call_id/{shipCallId}/movement_type/{movementType}/FAL5": {
+      "post": {
+        "summary": "submit a FAL5",
+        "description": "Allows to submit a FAL5 (crew list) for specified ship movement. Previous one will be overidden.\n\nAPI user must have a corresponding Escaleport contact with write access to FAL5\n\nCurl example:\n```bash\ncurl -k -H \"Authorization:Bearer <access_token>\" -H  \"Content-Type: application/xml\" --data \"<?xml version=\\\"1.0\\\" encoding=\\\"UTF-8\\\"?>\n  <crewList>\n      <crewMember>\n          <lastName>Johnson</lastName>\n          <firstName>Boris</firstName>\n          <dutyOfCrew>captain</dutyOfCrew>\n          <nationality>GB</nationality>\n          <dateOfBirth>1970-01-01</dateOfBirth>\n          <placeOfBirth>New York</placeOfBirth>\n          <countryOfBirth>GB</countryOfBirth>\n          <natureOfIdentityDocument>MusterBook</natureOfIdentityDocument>\n          <numberOfIdentityDocument>string</numberOfIdentityDocument>\n          <visaResidencePermitNumber>string</visaResidencePermitNumber>\n      </crewMember>\n  </crewList>\"\n  -X POST https://sandbox-api.aife.economie.gouv.fr/escaleport/0.2.0/port/FRCQF/ship_call_id/2019000256/movement_type/arrival/FAL5\n```\n",
+        "parameters": [
+          {
+            "name": "locode",
+            "in": "path",
+            "description": "locode of the port of call",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Locode"
+            }
+          },
+          {
+            "name": "shipCallId",
+            "in": "path",
+            "description": "Identifier of the ship call",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/CallNumber"
+            }
+          },
+          {
+            "name": "movementType",
+            "in": "path",
+            "description": "define if FAL5 applies to the arrival or departure movement",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/MovementType"
+            }
+          },
+          {
+            "name": "Authorization",
+            "description": "PISTE provided authorization token",
+            "example": "Bearer mF_9.B5f-4.1JqM",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/CrewListBody"
+        },
+        "responses": {
+          "201": {
+            "description": "FAL5 successfully submitted and created, replacing former one if any."
+          },
+          "400": {
+            "description": "Bad Request. Request/body value not valid or invalid use. May be caused by object not respecting schema rules. Details can be found in returned error object.",
+            "content": {
+              "application/xml;charset=utf-8": {
+                "schema": {
+                  "description": "Error or errors' description",
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Error"
+                  },
+                  "xml": {
+                    "name": "errors"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. Authentication required."
+          },
+          "403": {
+            "description": "Forbidden. Operation not allowed for specific user."
+          },
+          "404": {
+            "description": "Not Found. The resource does not exist."
+          },
+          "406": {
+            "description": "Not acceptable. Can't generate response according to headers request headers",
+            "content": {
+              "application/xml;charset=utf-8": {
+                "schema": {
+                  "description": "Error or errors' description",
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Error"
+                  },
+                  "xml": {
+                    "name": "errors"
+                  }
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsuported media type."
+          },
+          "500": {
+            "description": "Internal Server Error."
+          },
+          "503": {
+            "description": "Service Unavailable."
+          },
+          "default": {
+            "description": "Unexpected error",
+            "content": {
+              "application/xml;charset=utf-8": {
+                "schema": {
+                  "description": "Error or errors' description",
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Error"
+                  },
+                  "xml": {
+                    "name": "errors"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/port/{locode}/ship_call_id/{shipCallId}/movement_type/{movementType}/FAL6": {
+      "post": {
+        "summary": "submit a FAL6",
+        "description": "Allows to submit a FAL6 (passengers list) for specified ship movement. Previous one will be overidden.\n\nAPI user must have a corresponding Escaleport contact with write access to FAL6\n\nCurl example:\n```bash\ncurl -k -H \"Authorization:Bearer <access_token>\" -H  \"Content-Type: application/xml\" --data \"<?xml version=\\\"1.0\\\" encoding=\\\"UTF-8\\\"?>\n  <passengerList>\n      <passenger>\n          <lastName>Johnson</lastName>\n          <firstName>Boris</firstName>\n          <nationality>GB</nationality>\n          <dateOfBirth>1970-01-01</dateOfBirth>\n          <placeOfBirth>New York</placeOfBirth>\n          <countryOfBirth>GB</countryOfBirth>\n          <natureOfIdentityDocument>MusterBook</natureOfIdentityDocument>\n          <numberOfIdentityDocument>string</numberOfIdentityDocument>\n          <portOfEmbarkation>FRCQF</portOfEmbarkation>\n          <portOfDisembarkation>FRCQF</portOfDisembarkation>\n          <transit>false</transit>\n          <visaResidencePermitNumber>string</visaResidencePermitNumber>\n      </passenger>\n  </passengerList>\"\n  -X POST https://sandbox-api.aife.economie.gouv.fr/escaleport/0.2.0/port/FRCQF/ship_call_id/2019000256/movement_type/arrival/FAL6\n```\n",
+        "parameters": [
+          {
+            "name": "locode",
+            "in": "path",
+            "description": "locode of the port of call",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Locode"
+            }
+          },
+          {
+            "name": "shipCallId",
+            "in": "path",
+            "description": "Identifier of the ship call",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/CallNumber"
+            }
+          },
+          {
+            "name": "movementType",
+            "in": "path",
+            "description": "define if FAL5 applies to the arrival or departure movement",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/MovementType"
+            }
+          },
+          {
+            "name": "Authorization",
+            "description": "PISTE provided authorization token",
+            "example": "Bearer mF_9.B5f-4.1JqM",
+            "required": true,
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "$ref": "#/components/requestBodies/PassengerListBody"
+        },
+        "responses": {
+          "201": {
+            "description": "FAL6 successfully submitted and created, replacing former one if any."
+          },
+          "400": {
+            "description": "Bad Request. Request/body value not valid or invalid use. May be caused by object not respecting schema rules. Details can be found in returned error object.",
+            "content": {
+              "application/xml;charset=utf-8": {
+                "schema": {
+                  "description": "Error or errors' description",
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Error"
+                  },
+                  "xml": {
+                    "name": "errors"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. Authentication required."
+          },
+          "403": {
+            "description": "Forbidden. Operation not allowed for specific user."
+          },
+          "404": {
+            "description": "Not Found. The resource does not exist."
+          },
+          "406": {
+            "description": "Not acceptable. Can't generate response according to request headers.",
+            "content": {
+              "application/xml;charset=utf-8": {
+                "schema": {
+                  "description": "Error or errors' description",
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Error"
+                  },
+                  "xml": {
+                    "name": "errors"
+                  }
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Unsuported media type."
+          },
+          "500": {
+            "description": "Internal Server Error."
+          },
+          "503": {
+            "description": "Service Unavailable."
+          },
+          "default": {
+            "description": "Unexpected error",
+            "content": {
+              "application/xml;charset=utf-8": {
+                "schema": {
+                  "description": "Error or errors' description",
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Error"
+                  },
+                  "xml": {
+                    "name": "errors"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "requestBodies": {
+      "PassengerListBody": {
+        "content": {
+          "application/xml;charset=utf-8": {
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/PassengerList"
+                },
+                {
+                  "xml": {
+                    "wrapped": true,
+                    "name": "passengerList"
+                  }
+                }
+              ]
+            }
+          },
+          "text/csv;charset=iso-8859-15": {
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/PassengerList"
+                },
+                {
+                  "description": "CSV Header:\n\nNo;LastName;FirstName;Nationality;Date of birth;Place of birth;Country of birth;Nature of identity document;Number of identity document;Port of embarkation;Port of disembarkation;Transit;Visa/Residence Permit number\n"
+                },
+                {
+                  "example": "No;LastName;FirstName;Nationality;Date of birth;Place of birth;Country of birth;Nature of identity document;Number of identity document;Port of embarkation;Port of disembarkation;Transit;Visa/Residence Permit number\n;Truquin;Jacques;FRA;1907-07-01;Monaco;FRA;Other;132564;FRBES;FRBES;Y;1321354\n"
+                }
+              ]
+            }
+          }
+        },
+        "description": "List of passenger object",
+        "required": true
+      },
+      "CrewListBody": {
+        "content": {
+          "application/xml;charset=utf-8": {
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/CrewList"
+                },
+                {
+                  "xml": {
+                    "wrapped": true,
+                    "name": "crewList"
+                  }
+                }
+              ]
+            }
+          },
+          "text/csv;charset=iso-8859-15": {
+            "schema": {
+              "allOf": [
+                {
+                  "$ref": "#/components/schemas/CrewList"
+                },
+                {
+                  "description": "CSV Header:\n\nNo;Lastname;Firstname;Nationality;Date of birth;Place of birth;Country of birth;Nature of identity document;Number of identity document;Duty crew list;Visa/Residence Permit number\n"
+                },
+                {
+                  "example": "No;Lastname;Firstname;Nationality;Date of birth;Place of birth;Country of birth;Nature of identity document;Number of identity document;Duty crew list;Visa/Residence Permit number\n;Haddock;Archibald;BEL;01/07/1977;\"Brussel\";\"BEL\";\"Other\";\"425465465\";\"Master\";546565465\n"
+                }
+              ]
+            }
+          }
+        },
+        "description": "List of passenger object",
+        "required": true
+      }
+    },
+    "schemas": {
+      "Locode": {
+        "description": "UN locode of the port",
+        "type": "string",
+        "minLength": 5,
+        "maxLength": 5,
+        "example": "FRCQF"
+      },
+      "CountryCode": {
+        "description": "Country code ISO 3166-1 alpha-2 or alpha-3",
+        "type": "string",
+        "minLength": 2,
+        "maxLength": 3,
+        "example": "GB"
+      },
+      "MovementNumber": {
+        "description": "Escaleport movement number identifier",
+        "type": "integer",
+        "format": "int64",
+        "minimum": 2000000000,
+        "maximum": 9999999999,
+        "example": 2019001854
+      },
+      "MovementType": {
+        "type": "string",
+        "enum": [
+          "arrival",
+          "departure",
+          "shift"
+        ]
+      },
+      "MovementStatus": {
+        "type": "string",
+        "enum": [
+          "planned",
+          "ongoing",
+          "done",
+          "canceled"
+        ]
+      },
+      "CallNumber": {
+        "description": "Escaleport number of a call",
+        "type": "integer",
+        "format": "int64",
+        "minimum": 2000000000,
+        "maximum": 9999999999,
+        "example": 2019000256
+      },
+      "IMONumber": {
+        "description": "IMO number. Must respect the rules of self control",
+        "type": "integer",
+        "minimum": 1000000,
+        "maximum": 9999999,
+        "example": 9015266
+      },
+      "Ship": {
+        "description": "ship object",
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "example": "PRIDE OF KENT"
+          },
+          "imo": {
+            "$ref": "#/components/schemas/IMONumber"
+          },
+          "mmsi": {
+            "type": "integer",
+            "example": 209512000
+          },
+          "callSign": {
+            "type": "string",
+            "example": "5BEB5"
+          },
+          "type": {
+            "type": "string"
+          }
+        }
+      },
+      "MovementInfo": {
+        "description": "basic informations about a movement",
+        "type": "object",
+        "properties": {
+          "shipCallId": {
+            "$ref": "#/components/schemas/CallNumber"
+          },
+          "movementNumber": {
+            "$ref": "#/components/schemas/MovementNumber"
+          },
+          "portLocode": {
+            "$ref": "#/components/schemas/Locode"
+          },
+          "movementType": {
+            "$ref": "#/components/schemas/MovementType"
+          },
+          "movementStatus": {
+            "$ref": "#/components/schemas/MovementStatus"
+          },
+          "departureBerth": {
+            "description": "berth that the ship is leaving (departure and shift only)",
+            "example": "P9",
+            "type": "string"
+          },
+          "lastPort": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Locode"
+              },
+              {
+                "description": "the locode of the port from which the ship comes (arrival only)"
+              }
+            ]
+          },
+          "etd": {
+            "description": "estimated departure time (shift and departure only)",
+            "type": "string",
+            "format": "date-time"
+          },
+          "atd": {
+            "description": "actual departure time (shift and departure only)",
+            "type": "string",
+            "format": "date-time"
+          },
+          "arrivalBerth": {
+            "description": "berth on which the ship is heading (arrival and shift only)",
+            "example": "P9",
+            "type": "string"
+          },
+          "nextPort": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Locode"
+              },
+              {
+                "description": "the locode of the port to which the ship goes (departue only)"
+              }
+            ]
+          },
+          "eta": {
+            "description": "estimated arrival time (arrival and shift only)",
+            "type": "string",
+            "format": "date-time"
+          },
+          "ata": {
+            "description": "actual arrival time (arrival and shift only)",
+            "type": "string",
+            "format": "date-time"
+          },
+          "ship": {
+            "$ref": "#/components/schemas/Ship"
+          },
+          "company": {
+            "type": "string",
+            "example": "COMPAGNIE P/O"
+          }
+        },
+        "xml": {
+          "name": "movementInfo"
+        }
+      },
+      "PassengerList": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Passenger"
+        }
+      },
+      "Passenger": {
+        "description": "Passenger object",
+        "type": "object",
+        "required": [
+          "lastName",
+          "firstName",
+          "nationality",
+          "dateOfBirth",
+          "placeOfBirth",
+          "natureOfIdentityDocument",
+          "numberOfIdentityDocument",
+          "portOfEmbarkation",
+          "portOfDisembarkation",
+          "transit"
+        ],
+        "properties": {
+          "lastName": {
+            "type": "string",
+            "maxLength": 70,
+            "example": "Johnson"
+          },
+          "firstName": {
+            "type": "string",
+            "maxLength": 70,
+            "example": "Boris"
+          },
+          "nationality": {
+            "$ref": "#/components/schemas/CountryCode"
+          },
+          "dateOfBirth": {
+            "type": "string",
+            "format": "date",
+            "example": "1964-06-19T00:00:00.000Z"
+          },
+          "placeOfBirth": {
+            "type": "string",
+            "maxLength": 35,
+            "example": "New York"
+          },
+          "countryOfBirth": {
+            "$ref": "#/components/schemas/CountryCode"
+          },
+          "natureOfIdentityDocument": {
+            "type": "string",
+            "enum": [
+              "MusterBook",
+              "Passport",
+              "ResidentialPermit",
+              "PictureId",
+              "Other"
+            ]
+          },
+          "numberOfIdentityDocument": {
+            "type": "string",
+            "maxLength": 35
+          },
+          "portOfEmbarkation": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Locode"
+              },
+              {
+                "description": "locode of the port of embarkation"
+              }
+            ]
+          },
+          "portOfDisembarkation": {
+            "allOf": [
+              {
+                "description": "locode of the port of disembarkation"
+              },
+              {
+                "$ref": "#/components/schemas/Locode"
+              }
+            ]
+          },
+          "transit": {
+            "type": "boolean"
+          },
+          "visaResidencePermitNumber": {
+            "type": "string",
+            "maxLength": 35
+          }
+        },
+        "xml": {
+          "name": "passenger"
+        }
+      },
+      "CrewList": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/CrewMember"
+        }
+      },
+      "CrewMember": {
+        "type": "object",
+        "required": [
+          "lastName",
+          "firstName",
+          "dutyOfCrew",
+          "nationality",
+          "dateOfBirth",
+          "placeOfBirth",
+          "natureOfIdentityDocument",
+          "numberOfIdentityDocument"
+        ],
+        "properties": {
+          "lastName": {
+            "type": "string",
+            "maxLength": 70,
+            "example": "Johnson"
+          },
+          "firstName": {
+            "type": "string",
+            "maxLength": 70,
+            "example": "Boris"
+          },
+          "dutyOfCrew": {
+            "type": "string",
+            "maxLength": 70,
+            "example": "captain"
+          },
+          "nationality": {
+            "$ref": "#/components/schemas/CountryCode"
+          },
+          "dateOfBirth": {
+            "type": "string",
+            "format": "date",
+            "example": "1970-01-01T00:00:00.000Z"
+          },
+          "placeOfBirth": {
+            "type": "string",
+            "maxLength": 35,
+            "example": "New York"
+          },
+          "countryOfBirth": {
+            "$ref": "#/components/schemas/CountryCode"
+          },
+          "natureOfIdentityDocument": {
+            "type": "string",
+            "enum": [
+              "MusterBook",
+              "Passport",
+              "ResidentialPermit",
+              "PictureId",
+              "Other"
+            ]
+          },
+          "numberOfIdentityDocument": {
+            "type": "string",
+            "maxLength": 35
+          },
+          "visaResidencePermitNumber": {
+            "type": "string",
+            "maxLength": 35
+          }
+        },
+        "xml": {
+          "name": "crewMember"
+        }
+      },
+      "Error": {
+        "description": "Object describing an error",
+        "type": "object",
+        "properties": {
+          "errorLabel": {
+            "type": "string"
+          },
+          "errorDescription": {
+            "type": "string"
+          },
+          "errorUri": {
+            "type": "string",
+            "format": "url"
+          },
+          "errorTimestamp": {
+            "type": "integer"
+          }
+        },
+        "xml": {
+          "name": "error"
+        }
+      },
+      "Health": {
+        "description": "Services' health details",
+        "type": "object",
+        "properties": {
+          "overallHealth": {
+            "$ref": "#/components/schemas/HealthStatus"
+          },
+          "databaseHealth": {
+            "$ref": "#/components/schemas/HealthStatus"
+          }
+        },
+        "xml": {
+          "name": "health"
+        }
+      },
+      "HealthStatus": {
+        "description": "Service's health status",
+        "type": "string",
+        "enum": [
+          "OK",
+          "KO"
+        ]
+      }
+    },
+    "securitySchemes": {
+      "piste_auth": {
+        "type": "oauth2",
+        "description": "oauth2 authentification through PISTE API Manager",
+        "flows": {
+          "clientCredentials": {
+            "tokenUrl": "https://oauth.aife.economie.gouv.fr/api/oauth/token",
+            "scopes": {
+              "openid": ""
+            }
+          }
+        }
+      },
+      "piste_sandbox_auth": {
+        "type": "oauth2",
+        "description": "oauth2 authentification through PISTE API Manager",
+        "flows": {
+          "clientCredentials": {
+            "tokenUrl": "https://sandbox-oauth.aife.economie.gouv.fr/api/oauth/token",
+            "scopes": {
+              "openid": ""
+            }
+          }
+        }
+      }
+    }
+  }
+}
